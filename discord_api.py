@@ -102,7 +102,8 @@ class DiscordApi:
             self.queriesPerCurrentSecond = 0
 
         if self.queriesPerCurrentSecond > 50:
-            await asyncio.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
+            #await asyncio.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
+            time.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
             self.queriesPerCurrentSecond = 0
             self.currentNsStartpoint = ns
 
@@ -116,7 +117,8 @@ class DiscordApi:
             if 'retry_after' in data:
                 self.rateLimitReachedNotifier and self.rateLimitReachedNotifier.notify(self, url)
                 wait = data['retry_after']
-                await asyncio.sleep(wait + 0.01)
+                #await asyncio.sleep(wait + 0.01)
+                time.sleep(wait + 0.01)
                 self.log and self.log.log(wait)
                 continue
             if not supressErrors:
