@@ -73,7 +73,7 @@ class DiscordApi:
         self.cache = {}
         self.initializers = initializers
 
-    def get(what, **kwgs):
+    def get(what, **kwgs): # replace with stdlib cache?
         if 'id' not in kwgs:
             if what not in self.cache or kwgs['forced']:
                 self.cache[what] = self.initializers[what](kwgs)
@@ -142,23 +142,25 @@ class DiscordApi:
     
     def get_messages_by_chunks(self, 
         channelId, 
-        lastSnowflake = 0, 
+        lastSnowflake = 0,
+        firstSnowflake = -1,
         size = 1000, # may return a bit more if is not divible by 100
         projector = nop, 
-        filter_ = nop
+        filter_ = nop,
+        progressFn = None
     ):
         result = []
         while True:
             for i in range(math.ceil(size / 100)):
                 d = self.query(
                     self.baseUrl + 
-                    self.messagesInChannelFromSnoflakeUrl.format(channelId, lastSnowflake), 
+                    self.messagesInChannelFromSnoflakeUrl.format(channelId, lastSnowflake) + (firstSnowflake != -1 and '&before{firstSnowflake}' or ''), 
                     projector,
                      _filter
                 )[::-1] # newer messages will appear first, so inverse the order according to one in discord
                 result.extend(d)
                 lastSnowflake = d[-1]['id']
-
+                progressFn and progressFn(i, result, lastSnowflake)
                 if len(d) < 100:
                     yield result
                     yield break
