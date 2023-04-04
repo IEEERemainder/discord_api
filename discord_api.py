@@ -2,6 +2,7 @@ import json
 import time
 import urllib.request
 import time
+import math
 
 def nop(x): return x
 
@@ -35,7 +36,7 @@ class BasicParsers:
             'type' : nop, 
             'content' : nop, 
             'message_reference' : lambda x: x['message_id'], 
-            'attachments': lambda x: ' '.join([f'[{a['url']}]' for a in x])
+            'attachments': lambda x: ' '.join([f'[{a["url"]}]' for a in x]) if atts else ''
         })
     def guild(self, guild):
         return self.parse(msg, {
@@ -72,6 +73,7 @@ class DiscordApi:
         self.rateLimitReachedNotifier = rateLimitReachedNotifier 
         self.cache = {}
         self.initializers = initializers
+        self.DISCORD_MAX_QUERIES_PER_SECOND = 50
 
     def get(what, **kwgs): # replace with stdlib cache?
         if 'id' not in kwgs:
@@ -101,7 +103,7 @@ class DiscordApi:
             self.currentNsStartpoint = ns
             self.queriesPerCurrentSecond = 0
 
-        if self.queriesPerCurrentSecond > 50:
+        if self.queriesPerCurrentSecond > self.maxQueriesPerSecond:
             #await asyncio.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
             time.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
             self.queriesPerCurrentSecond = 0
@@ -115,8 +117,8 @@ class DiscordApi:
             self.log and self.log.log(url)
 
             if 'retry_after' in data:
-                self.rateLimitReachedNotifier and self.rateLimitReachedNotifier.notify(self, url)
                 wait = data['retry_after']
+                self.rateLimitReachedNotifier and self.rateLimitReachedNotifier.notify(self, url, wait)
                 #await asyncio.sleep(wait + 0.01)
                 time.sleep(wait + 0.01)
                 self.log and self.log.log(wait)
@@ -125,7 +127,7 @@ class DiscordApi:
                 self.throwIfError(data)
             break
 
-        return [projector(x) for x in data if filter_(x)]
+        return type(data) == type([]) and [projector(x) for x in data if filter_(x)] or data
     
     def throwIfError(self, json_):
         if 'message' in json_:
@@ -156,17 +158,17 @@ class DiscordApi:
                     self.baseUrl + 
                     self.messagesInChannelFromSnoflakeUrl.format(channelId, lastSnowflake) + (firstSnowflake != -1 and '&before{firstSnowflake}' or ''), 
                     projector,
-                     _filter
+                     filter_
                 )[::-1] # newer messages will appear first, so inverse the order according to one in discord
                 result.extend(d)
-                lastSnowflake = d[-1]['id']
                 progressFn and progressFn(i, result, lastSnowflake)
                 if len(d) < 100:
                     yield result
-                    yield break
+                    return
+                lastSnowflake = d[-1]['id']
 
             yield result
             result = []
             
     def get_channel_message_count_json(self, channelId, supressErrors = False):
-        return self.query(self.baseUrl + f'channels/{channelId}/messages/search', supressErrors=supressErrors)
+        return self.query(self.baseUrl + f'channels/{channelId}/messages/search', projector =None,supressErrors=supressErrors)
