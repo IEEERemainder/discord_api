@@ -21,7 +21,7 @@ class BasicStringifiers:
             'timestamp' : msg['timestamp'][:19],
             'author' : msg['author']['username'],
             'content' : msg['content'],
-            'attachements' : ' ' + ' '.join([f'[{a["url"]}]' for a in ]) if atts else ''
+            'attachements' : ' ' + ' '.join([f'[{a["url"]}]' for a in atts]) if atts else ''
         })
 
 class BasicParsers:
