@@ -164,7 +164,7 @@ class DiscordApi:
 
         if self.queriesPerCurrentSecond > self.maxQueriesPerSecond:
             #await asyncio.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
-            time.sleep((ns - self.currentNsStartpoint) / 1_000_000 + 0.01)
+            time.sleep((ns - self.currentNsStartpoint) / 1_000_000_000 + 0.01)
             self.queriesPerCurrentSecond = 0
             self.currentNsStartpoint = ns
 
